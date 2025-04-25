@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold">{{ course.name }}</h1>
+        <p class="text-gray-600 mt-2">{{ course.description }}</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-md overflow-hidden mb-12">
+        <div class="px-6 py-4 border-b">
+            <h2 class="text-xl font-semibold">Exercises</h2>
+        </div>
+
+        {% if course.exercises %}
+        <ul class="divide-y divide-gray-200">
+            {% for exercise in course.exercises %}
+            <li class="px-6 py-4 hover:bg-gray-50">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-medium">{{ exercise.name }}</h3>
+                        <p class="text-sm text-gray-500 mt-1">
+                            {{ exercise.questions|length }} questions
+                        </p>
+                    </div>
+                    <a href="{{ url_for('view_exercise', exercise_id=exercise.id) }}" 
+                       class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm">
+                        Start Exercise
+                    </a>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="px-6 py-8 text-center">
+            <p class="text-gray-500">No exercises yet.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Practice Test Section -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b bg-blue-50">
+            <h2 class="text-xl font-semibold text-blue-800">Practice Test</h2>
+            <p class="text-sm text-blue-600 mt-1">
+                Test your knowledge across all exercises
+            </p>
+        </div>
+
+        <div class="px-6 py-4">
+            <form method="POST" action="{{ url_for('start_practice_test', course_id=course.id) }}">
+                <div class="mb-4">
+                    <label for="question_count" class="block text-gray-700 mb-2">
+                        Number of Questions (Max {{ total_questions }})
+                    </label>
+                    <input type="number" id="question_count" name="question_count" 
+                           min="1" max="{{ total_questions }}" 
+                           value="{{ [10, total_questions]|min }}"
+                           class="w-full max-w-xs px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" 
+                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    Start Practice Test
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

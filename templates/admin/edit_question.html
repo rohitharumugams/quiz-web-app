@@ -1,0 +1,51 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="max-w-3xl mx-auto bg-white p-6 rounded shadow">
+    <h2 class="text-xl font-bold mb-4">Edit Question</h2>
+    <form method="POST">
+        <div class="mb-4">
+            <label class="block text-gray-700 mb-2">Question Text</label>
+            <textarea name="text" required 
+                     class="w-full px-3 py-2 border rounded">{{ question.text }}</textarea>
+        </div>
+        
+        <div class="mb-4">
+            <label class="block text-gray-700 mb-2">Question Type</label>
+            <select name="question_type" class="w-full px-3 py-2 border rounded">
+                <option value="multiple_choice" {% if question.question_type == 'multiple_choice' %}selected{% endif %}>
+                    Multiple Choice
+                </option>
+                <option value="true_false" {% if question.question_type == 'true_false' %}selected{% endif %}>
+                    True/False
+                </option>
+            </select>
+        </div>
+        
+        <h3 class="font-medium mb-2">Options:</h3>
+        <div class="space-y-2 mb-6">
+            {% for option in question.options %}
+            <div class="flex items-center space-x-4">
+                <input type="text" name="option_{{ option.id }}" value="{{ option.text }}" 
+                       class="flex-1 px-3 py-2 border rounded" required>
+                <label class="flex items-center">
+                    <input type="radio" name="correct_option" value="{{ option.id }}" 
+                           {% if option.is_correct %}checked{% endif %} class="mr-2">
+                    Correct
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="flex space-x-4">
+            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                Update Question
+            </button>
+            <a href="{{ url_for('add_question', exercise_id=question.exercise_id) }}" 
+               class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

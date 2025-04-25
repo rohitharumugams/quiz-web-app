@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="flex">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-800 text-white p-4">
+            <h2 class="text-xl font-bold mb-6">Admin Panel</h2>
+            <nav>
+                <ul class="space-y-2">
+                    <li>
+                        <a href="{{ url_for('admin_dashboard') }}" 
+                           class="block px-4 py-2 hover:bg-gray-700 rounded">Dashboard</a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('add_course') }}" 
+                           class="block px-4 py-2 hover:bg-gray-700 rounded">Add Course</a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main content -->
+        <div class="flex-1 p-8">
+            {% block admin_content %}{% endblock %}
+        </div>
+    </div>
+{% endblock %}

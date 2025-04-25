@@ -1,0 +1,179 @@
+{% extends "admin/base.html" %}
+
+{% block admin_content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold">Manage Questions</h1>
+            <p class="text-gray-600">Exercise: {{ exercise.name }} (Course: {{ exercise.course.name }})</p>
+        </div>
+        <a href="{{ url_for('admin_dashboard') }}" 
+           class="text-blue-500 hover:underline">
+            Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Add Question Form -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Add New Question</h2>
+        <form method="POST">
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Question Text</label>
+                <textarea name="text" required rows="3"
+                          class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2">Question Type</label>
+                <div class="flex space-x-4">
+                    <label class="flex items-center">
+                        <input type="radio" name="question_type" value="multiple_choice" checked 
+                               class="h-4 w-4 text-blue-600">
+                        <span class="ml-2">Multiple Choice</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="question_type" value="true_false" 
+                               class="h-4 w-4 text-blue-600">
+                        <span class="ml-2">True/False</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-700 mb-2">Options (Mark correct answers)</label>
+                <div id="options-container" class="space-y-2">
+                    <!-- Option 1 -->
+                    <div class="option-item flex items-center space-x-2">
+                        <input type="text" name="options[]" placeholder="Option text" required
+                               class="flex-1 px-3 py-2 border rounded">
+                        <input type="checkbox" name="correct_options[]" value="0" 
+                               class="h-4 w-4 text-blue-600">
+                        <span>Correct</span>
+                    </div>
+                    <!-- Option 2 -->
+                    <div class="option-item flex items-center space-x-2">
+                        <input type="text" name="options[]" placeholder="Option text" required
+                               class="flex-1 px-3 py-2 border rounded">
+                        <input type="checkbox" name="correct_options[]" value="1" 
+                               class="h-4 w-4 text-blue-600">
+                        <span>Correct</span>
+                    </div>
+                </div>
+                <button type="button" id="add-option" 
+                        class="mt-2 text-blue-500 hover:underline">Add Another Option</button>
+            </div>
+
+            <button type="submit" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                Add Question
+            </button>
+        </form>
+    </div>
+
+    <!-- Existing Questions -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b">
+            <h2 class="text-xl font-semibold">Existing Questions ({{ exercise.questions|length }})</h2>
+        </div>
+
+        {% if exercise.questions %}
+        <ul class="divide-y divide-gray-200">
+            {% for question in exercise.questions %}
+            <li class="px-6 py-4 hover:bg-gray-50">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <h3 class="font-medium">{{ question.text }}</h3>
+                        <p class="text-sm text-gray-500 mt-1">
+                            Type: {{ question.question_type|replace('_',' ')|title }}
+                        </p>
+                        
+                        <!-- Options List -->
+                        <ul class="mt-2 space-y-1">
+                            {% for option in question.options %}
+                            <li class="flex items-center">
+                                <span class="w-4 mr-2">
+                                    {% if option.is_correct %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                    </svg>
+                                    {% endif %}
+                                </span>
+                                <span {% if option.is_correct %}class="font-medium"{% endif %}>
+                                    {{ option.text }}
+                                </span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex space-x-2 ml-4">
+                        <a href="{{ url_for('edit_question', question_id=question.id) }}" 
+                           class="text-blue-500 hover:text-blue-700"
+                           title="Edit">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                        </a>
+                        <a href="{{ url_for('delete_question', question_id=question.id) }}" 
+                           class="text-red-500 hover:text-red-700"
+                           title="Delete"
+                           onclick="return confirm('Delete this question?')">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="px-6 py-8 text-center">
+            <p class="text-gray-500">No questions yet. Add your first question above.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Add/Remove options dynamically
+    document.getElementById('add-option').addEventListener('click', function() {
+        const container = document.getElementById('options-container');
+        const optionCount = container.children.length;
+        
+        const div = document.createElement('div');
+        div.className = 'option-item flex items-center space-x-2';
+        div.innerHTML = `
+            <input type="text" name="options[]" placeholder="Option text" required
+                   class="flex-1 px-3 py-2 border rounded">
+            <input type="checkbox" name="correct_options[]" value="${optionCount}" 
+                   class="h-4 w-4 text-blue-600">
+            <span>Correct</span>
+            <button type="button" class="text-red-500 hover:text-red-700 remove-option">×</button>
+        `;
+        
+        container.appendChild(div);
+        
+        // Add event listener to remove button
+        div.querySelector('.remove-option').addEventListener('click', function() {
+            container.removeChild(div);
+        });
+    });
+
+    // Allow only one correct answer for multiple choice
+    document.querySelector('input[name="question_type"]').addEventListener('change', function(e) {
+        if (e.target.value === 'multiple_choice') {
+            document.querySelectorAll('input[name="correct_options[]"]').forEach(checkbox => {
+                checkbox.type = 'radio';
+                checkbox.name = 'correct_option';
+            });
+        } else {
+            document.querySelectorAll('input[name="correct_option"]').forEach(radio => {
+                radio.type = 'checkbox';
+                radio.name = 'correct_options[]';
+            });
+        }
+    });
+</script>
+{% endblock %}

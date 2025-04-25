@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    {% if exercise.id == 0 %}
+    <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <h2 class="text-xl font-bold text-blue-800">Practice Test</h2>
+        <p class="text-blue-600">Questions sampled from all exercises in this course</p>
+    </div>
+    {% endif %}
+
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold">{{ exercise.name }}</h1>
+        {% if exercise.id != 0 %}
+        <p class="text-gray-600 mt-1">Course: {{ exercise.course.name }}</p>
+        {% endif %}
+    </div>
+
+    <form method="POST" action="{{ url_for('view_exercise', exercise_id=exercise.id) }}">
+        {% for question in exercise.questions %}
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h3 class="text-xl font-semibold mb-4">{{ loop.index }}. {{ question.text }}</h3>
+            
+            {% if question.question_type == 'multiple_choice' %}
+                <div class="space-y-2">
+                    {% for option in question.options %}
+                    <label class="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded">
+                        <input type="radio" name="question_{{ question.id }}" value="{{ option.id }}" 
+                               class="h-4 w-4 text-blue-600">
+                        <span>{{ option.text }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="space-y-2">
+                    {% for option in question.options %}
+                    <label class="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded">
+                        <input type="checkbox" name="question_{{ question.id }}" value="{{ option.id }}" 
+                               class="h-4 w-4 text-blue-600">
+                        <span>{{ option.text }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        
+        <div class="flex justify-end">
+            <button type="submit" 
+                    class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg text-lg">
+                Submit Answers
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
