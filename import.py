@@ -1,35 +1,43 @@
-from app import app, db
-from app import User, Course, Exercise, Question, Option  # Import from app instead of models
+from app import db, Course, Exercise, Question, Option, app
 import json
 
-def import_data():
+def load_data():
     with app.app_context():
-        db.drop_all()  # Clear existing tables
-        db.create_all()  # Recreate tables
-        
-        with open('db_export.json') as f:
+        db.create_all()  # Create tables if they don't exist
+
+        # Load quiz data
+        with open('quiz_data.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
-            
-            # Import in correct order to maintain relationships
-            for user_data in data['users']:
-                db.session.add(User(**user_data))
-            db.session.commit()
-            
-            for course_data in data['courses']:
-                db.session.add(Course(**course_data))
-            db.session.commit()
-            
-            for exercise_data in data['exercises']:
-                db.session.add(Exercise(**exercise_data))
-            db.session.commit()
-            
-            for question_data in data['questions']:
-                db.session.add(Question(**question_data))
-            db.session.commit()
-            
-            for option_data in data['options']:
-                db.session.add(Option(**option_data))
-            db.session.commit()
+
+        for course_data in data:
+            course = Course(name=course_data['name'], description=course_data.get('description', ''))
+            db.session.add(course)
+            db.session.flush()  # Get course.id
+
+            for ex_data in course_data.get('exercises', []):
+                exercise = Exercise(name=ex_data['name'], course_id=course.id)
+                db.session.add(exercise)
+                db.session.flush()  # Get exercise.id
+
+                for q_data in ex_data.get('questions', []):
+                    question = Question(
+                        text=q_data['text'],
+                        question_type=q_data['question_type'],
+                        exercise_id=exercise.id
+                    )
+                    db.session.add(question)
+                    db.session.flush()  # Get question.id
+
+                    for opt_data in q_data['options']:
+                        option = Option(
+                            text=opt_data['text'],
+                            is_correct=opt_data['is_correct'],
+                            question_id=question.id
+                        )
+                        db.session.add(option)
+
+        db.session.commit()
+        print("Data imported successfully.")
 
 if __name__ == '__main__':
-    import_data()
+    load_data()
