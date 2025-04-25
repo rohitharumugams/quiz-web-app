@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func
 import random
 import os
+import json
 
 app = Flask(__name__)
 
@@ -60,6 +61,54 @@ def initialize_database():
             db.session.add(admin)
             db.session.commit()
 
+# Import quiz data from JSON only once
+def import_quiz_data():
+    if os.path.exists('instance/.imported'):
+        return  # Already imported, skip
+
+    with app.app_context():
+        if not os.path.exists('quiz_data.json'):
+            print("quiz_data.json not found. Skipping import.")
+            return
+
+        with open('quiz_data.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        for course_data in data:
+            course = Course(name=course_data['name'], description=course_data.get('description', ''))
+            db.session.add(course)
+            db.session.flush()
+
+            for ex_data in course_data.get('exercises', []):
+                exercise = Exercise(name=ex_data['name'], course_id=course.id)
+                db.session.add(exercise)
+                db.session.flush()
+
+                for q_data in ex_data.get('questions', []):
+                    question = Question(
+                        text=q_data['text'],
+                        question_type=q_data['question_type'],
+                        exercise_id=exercise.id
+                    )
+                    db.session.add(question)
+                    db.session.flush()
+
+                    for opt_data in q_data['options']:
+                        option = Option(
+                            text=opt_data['text'],
+                            is_correct=opt_data['is_correct'],
+                            question_id=question.id
+                        )
+                        db.session.add(option)
+
+        db.session.commit()
+
+        os.makedirs('instance', exist_ok=True)
+        with open('instance/.imported', 'w') as f:
+            f.write('imported')
+
+        print("Quiz data imported.")
+
 # Client Routes
 @app.route('/')
 def index():
@@ -79,15 +128,14 @@ def view_course(course_id):
 
 @app.route('/exercise/<int:exercise_id>', methods=['GET', 'POST'])
 def view_exercise(exercise_id):
-    # Handle practice test setup
-    if exercise_id == 0:  # Practice test
+    if exercise_id == 0:
         practice_questions = session.get('practice_test_questions', [])
         course_id = session.get('practice_test_course_id')
-        
+
         if not practice_questions or not course_id:
             flash('Practice test not properly initialized', 'error')
             return redirect(url_for('view_course', course_id=course_id))
-        
+
         exercise = {
             'id': 0,
             'name': "Practice Test",
@@ -98,39 +146,35 @@ def view_exercise(exercise_id):
     else:
         exercise = Exercise.query.get_or_404(exercise_id)
         is_practice_test = False
-    
-    # Handle form submission
+
     if request.method == 'POST':
         score = 0
         total_questions = len(exercise['questions'] if is_practice_test else exercise.questions)
         question_results = []
-        
+
         for question in (exercise['questions'] if is_practice_test else exercise.questions):
-            # For practice tests, question is a dict. For regular exercises, it's a SQLAlchemy object
             question_id = question['id'] if is_practice_test else question.id
             question_text = question['text'] if is_practice_test else question.text
             question_type = question['question_type'] if is_practice_test else question.question_type
-            
-            # Get correct answers from database
+
             db_question = Question.query.get(question_id)
             correct_options = [opt.id for opt in db_question.options if opt.is_correct]
-            
+
             user_selected_ids = []
             is_correct = False
-            
+
             if question_type == 'multiple_choice':
                 selected_id = request.form.get(f'question_{question_id}')
                 if selected_id:
                     user_selected_ids = [int(selected_id)]
                     is_correct = int(selected_id) in correct_options
-            else:  # multiple_answer
+            else:
                 user_selected_ids = [int(id) for id in request.form.getlist(f'question_{question_id}')]
                 is_correct = set(user_selected_ids) == set(correct_options)
-            
+
             if is_correct:
                 score += 1
-            
-            # Get all options with status for display
+
             options_with_status = []
             for option in db_question.options:
                 status = ''
@@ -138,37 +182,34 @@ def view_exercise(exercise_id):
                     status = 'correct' if option.is_correct else 'wrong'
                 elif option.is_correct:
                     status = 'missed'
-                
+
                 options_with_status.append({
                     'text': option.text,
                     'status': status
                 })
-            
+
             question_results.append({
                 'question': question_text,
                 'options': options_with_status,
                 'was_attempted': bool(user_selected_ids),
                 'is_correct': is_correct
             })
-        
+
         percentage = (score / total_questions) * 100 if total_questions > 0 else 0
-        
-        # Prepare exercise data for results template
+
         result_exercise = {
             'id': exercise['id'] if is_practice_test else exercise.id,
             'name': exercise['name'] if is_practice_test else exercise.name,
             'course': exercise['course'] if is_practice_test else exercise.course
         }
-        
+
         return render_template('exercise_result.html',
                             exercise=result_exercise,
                             score=score,
                             total=total_questions,
                             percentage=percentage,
                             question_results=question_results)
-    
-    # GET request - show the exercise
-    # Convert practice test questions to proper format for template
+
     if is_practice_test:
         class PracticeQuestion:
             def __init__(self, data):
@@ -176,37 +217,34 @@ def view_exercise(exercise_id):
                 self.text = data['text']
                 self.question_type = data['question_type']
                 self.options = [PracticeOption(opt) for opt in data['options']]
-        
+
         class PracticeOption:
             def __init__(self, data):
                 self.id = data['id']
                 self.text = data['text']
                 self.is_correct = False
-        
+
         exercise['questions'] = [PracticeQuestion(q) for q in exercise['questions']]
-    
+
     return render_template('exercise.html', exercise=exercise)
 
 @app.route('/practice-test/<int:course_id>', methods=['POST'])
 def start_practice_test(course_id):
     question_count = int(request.form['question_count'])
     course = Course.query.get_or_404(course_id)
-    
-    # Get all questions with their options
+
     questions = Question.query\
         .join(Exercise)\
         .filter(Exercise.course_id == course_id)\
         .options(db.joinedload(Question.options))\
         .all()
-    
+
     if not questions:
         flash('No questions available for practice test', 'error')
         return redirect(url_for('view_course', course_id=course_id))
-    
-    # Randomly select questions
+
     selected_questions = random.sample(questions, min(question_count, len(questions)))
-    
-    # Prepare question data with options
+
     practice_questions = []
     for question in selected_questions:
         practice_questions.append({
@@ -215,11 +253,10 @@ def start_practice_test(course_id):
             'question_type': question.question_type,
             'options': [{'id': opt.id, 'text': opt.text} for opt in question.options]
         })
-    
-    # Store in session
+
     session['practice_test_questions'] = practice_questions
     session['practice_test_course_id'] = course_id
-    
+
     return redirect(url_for('view_exercise', exercise_id=0))
 
 # Admin Routes
@@ -418,6 +455,7 @@ def delete_question(question_id):
 
 # Initialize the database before first request
 initialize_database()
+import_quiz_data()
 
 if __name__ == '__main__':
     app.run(debug=True)
