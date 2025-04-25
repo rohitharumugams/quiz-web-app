@@ -8,8 +8,8 @@ app = Flask(__name__)
 app.config.from_pyfile('config.py')
 db = SQLAlchemy(app)
 
-@app.before_first_request
-def create_tables():
+@app.before_serving
+async def create_tables():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
         admin = User(
