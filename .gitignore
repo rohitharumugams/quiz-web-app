@@ -5,5 +5,3 @@ instance/
 .env
 venv/
 .env.*
-*.sqlite3
-*.db
